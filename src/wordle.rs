@@ -77,7 +77,7 @@ impl GameState {
                 }
             })
             .map(|(_i, word)| word)
-            .max_by_key(|guess| {
+            .min_by_key(|guess| {
                 self.secret
                     .iter()
                     .map(|secret| compare_words(secret, guess).unwrap())
