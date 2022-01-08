@@ -63,21 +63,5 @@ impl<const N: usize> FromStr for Clue<N> {
             .try_into()
             .map_err(|_| Error::IncorrectStringLength)?;
         Ok(Self { tiles })
-
-        // Ok(s.chars()
-        //     .map(|c| c.try_into())
-        //     .collect::<Result<Vec<_>, _>>()?
-        //     .into_iter()
-        //     .try_into())
-        //     if s.len() == N {
-        //         let mut letters = [Tile::NotPresentInWord; N];
-        //         letters.iter_mut().zip(s.chars()).for_each(|(out, c)| {
-        //             *out = c;
-        //         });
-
-        //         Ok(Self { letters })
-        //     } else {
-        //         Err(Error::IncorrectStringLength)
-        //     }
     }
 }

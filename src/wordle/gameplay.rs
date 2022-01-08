@@ -26,6 +26,7 @@ pub struct Clue<const N: usize> {
     pub tiles: [Tile; N],
 }
 
+#[derive(Debug, Clone)]
 pub struct GameState<const N: usize> {
     pub dictionary: Vec<Word<N>>,
     pub secret: Vec<Word<N>>,
@@ -64,6 +65,32 @@ impl<const N: usize> GameState<N> {
         })
     }
 
+    pub fn simulate_strategy<F>(
+        &self,
+        secret_word: Word<N>,
+        mut strategy: F,
+    ) -> impl Iterator<Item = Result<(Option<(Word<N>, Clue<N>)>, Self), Error>>
+    where
+        F: FnMut(&Self) -> Word<N>,
+    {
+        std::iter::successors(
+            Some(Ok((None, self.clone()))),
+            move |res_state| {
+                if let Ok((_prev_clue, state)) = res_state {
+                    (state.secret.len() > 1).then(|| {
+                        let guess = strategy(state);
+                        let clue = compare_words(secret_word, guess);
+                        state
+                            .after_guess(guess, clue)
+                            .map(|new_state| (Some((guess, clue)), new_state))
+                    })
+                } else {
+                    None
+                }
+            },
+        )
+    }
+
     pub fn best_guess(&self) -> Result<Word<N>, Error> {
         if self.secret.len() == 0 {
             return Err(Error::NoWordsRemaining);
@@ -71,13 +98,6 @@ impl<const N: usize> GameState<N> {
         Ok(self
             .dictionary
             .iter()
-            .enumerate()
-            .inspect(|(i, word)| {
-                if i % 1000 == 0 {
-                    println!("Word {}/{}: {}", i, self.dictionary.len(), word);
-                }
-            })
-            .map(|(_i, word)| word)
             .min_by_key(|guess| {
                 self.secret
                     .iter()
