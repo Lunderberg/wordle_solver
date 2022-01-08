@@ -1,4 +1,3 @@
-mod wordle;
 use wordle::*;
 
 use rand::Rng;
