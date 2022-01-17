@@ -1,5 +1,5 @@
-mod bytearray_class;
-mod bytearray_direct;
+mod bytearray_arr_to_arr;
+mod bytearray_class_to_class;
 mod string_to_vector;
 
 use criterion::Criterion;
@@ -9,8 +9,14 @@ pub fn benchmark_group(c: &mut Criterion) {
 
     group.noise_threshold(0.1);
 
-    group.bench_function("bytearray_class", bytearray_class::bench::<5>);
-    group.bench_function("bytearray_direct", bytearray_direct::bench::<5>);
+    group.bench_function(
+        "bytearray_class_to_class",
+        bytearray_class_to_class::bench::<5>,
+    );
+    group.bench_function(
+        "bytearray_arr_to_arr",
+        bytearray_arr_to_arr::bench::<5>,
+    );
     group.bench_function("string_to_vec", string_to_vector::bench(5));
 
     group.finish();
