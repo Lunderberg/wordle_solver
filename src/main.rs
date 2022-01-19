@@ -4,8 +4,11 @@ use rand::Rng;
 use structopt::StructOpt;
 
 fn run_interactively(mut game_state: GameState<5>) -> Result<(), Error> {
-    while game_state.secret.len() > 1 {
-        println!("{} possibilities remaining", game_state.secret.len());
+    while game_state.possible_secrets.len() > 1 {
+        println!(
+            "{} possibilities remaining",
+            game_state.possible_secrets.len()
+        );
 
         let best_guess = game_state.best_guess()?;
         println!("Best word to guess = {}", best_guess);
@@ -18,8 +21,8 @@ fn run_interactively(mut game_state: GameState<5>) -> Result<(), Error> {
         game_state = game_state.after_guess(best_guess, clue)?;
     }
 
-    assert_eq!(game_state.secret.len(), 1);
-    println!("Winning word is {}", game_state.secret[0]);
+    assert_eq!(game_state.possible_secrets.len(), 1);
+    println!("Winning word is {}", game_state.possible_secrets[0]);
 
     Ok(())
 }
@@ -42,21 +45,21 @@ fn simulate_strategy<F, const N: usize>(
                 _ => (),
             }
             match res_state {
-                Ok((_, state)) if state.secret.len() == 0 => {
+                Ok((_, state)) if state.possible_secrets.len() == 0 => {
                     println!("Strategy failed, erroneously eliminated all possibilities.");
                 }
-                Ok((_, state)) if state.secret.len() == 1 => {
-                    println!("Winner, discovered secret word {}", state.secret[0]);
+                Ok((_, state)) if state.possible_secrets.len() == 1 => {
+                    println!("Winner, discovered secret word {}", state.possible_secrets[0]);
                 }
-                Ok((_, state)) if state.secret.len() < 15 => {
-                    println!("{} possible secret words remaining", state.secret.len());
+                Ok((_, state)) if state.possible_secrets.len() < 15 => {
+                    println!("{} possible secret words remaining", state.possible_secrets.len());
                     state
-                        .secret
+                        .possible_secrets
                         .iter()
                         .for_each(|word| println!("\tPossible: {}", word))
                 }
                 Ok((_, state)) => {
-                    println!("{} possible secret words remaining", state.secret.len());
+                    println!("{} possible secret words remaining", state.possible_secrets.len());
                 }
                 Err(e) => println!("Error: {:?}", e),
             }
@@ -99,8 +102,8 @@ fn main() -> Result<(), Error> {
             .map(|s| s.parse())
             .transpose()?
             .unwrap_or_else(|| {
-                game_state.secret
-                    [rand::thread_rng().gen_range(0..game_state.secret.len())]
+                game_state.possible_secrets[rand::thread_rng()
+                    .gen_range(0..game_state.possible_secrets.len())]
             });
         let strategy = |state: &GameState<5>| state.best_guess().unwrap();
         simulate_strategy(&game_state, strategy, secret_word);

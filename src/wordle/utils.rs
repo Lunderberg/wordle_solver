@@ -7,25 +7,30 @@ impl<const N: usize> GameState<N> {
         allowed_words: &P1,
         secret_words: &P2,
     ) -> Result<Self, Error> {
-        let dictionary = std::fs::read_to_string(allowed_words)
+        let allowed_guesses = std::fs::read_to_string(allowed_words)
             .map_err(|e| Error::WordListReadError(e))?
             .split("\n")
             .filter(|s| s.len() == N)
             .collect_words();
-        let secret = std::fs::read_to_string(secret_words)
+        let possible_secrets = std::fs::read_to_string(secret_words)
             .map_err(|e| Error::WordListReadError(e))?
             .split("\n")
             .filter(|s| s.len() == N)
             .collect_words();
 
-        Ok(Self { dictionary, secret })
+        Ok(Self {
+            allowed_guesses,
+            possible_secrets,
+        })
     }
 
     pub fn from_iter<'a>(word_iter: impl Iterator<Item = &'a str>) -> Self {
-        let dictionary: Vec<Word<N>> =
+        let words: Vec<Word<N>> =
             word_iter.filter(|s| s.len() == N).collect_words();
-        let secret = dictionary.clone();
-        Self { dictionary, secret }
+        Self {
+            allowed_guesses: words.clone(),
+            possible_secrets: words,
+        }
     }
 
     fn words_from_bytes(bytes: &[u8]) -> Vec<Word<N>> {
@@ -38,20 +43,23 @@ impl<const N: usize> GameState<N> {
     pub fn from_scrabble() -> Self {
         let words = Self::words_from_bytes(include_bytes!("scrabble.txt"));
         Self {
-            dictionary: words.clone(),
-            secret: words,
+            allowed_guesses: words.clone(),
+            possible_secrets: words,
         }
     }
 
     pub fn from_wordle() -> Self {
-        let dictionary = Self::words_from_bytes(include_bytes!(
+        let allowed_guesses = Self::words_from_bytes(include_bytes!(
             "wordle_allowed_guesses.txt"
         ));
-        let secret = Self::words_from_bytes(include_bytes!(
+        let possible_secrets = Self::words_from_bytes(include_bytes!(
             "wordle_possible_secrets.txt"
         ));
 
-        Self { dictionary, secret }
+        Self {
+            allowed_guesses,
+            possible_secrets,
+        }
     }
 }
 

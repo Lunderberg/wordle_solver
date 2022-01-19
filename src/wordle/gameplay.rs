@@ -28,8 +28,8 @@ pub struct Clue<const N: usize> {
 
 #[derive(Debug, Clone)]
 pub struct GameState<const N: usize> {
-    pub dictionary: Vec<Word<N>>,
-    pub secret: Vec<Word<N>>,
+    pub allowed_guesses: Vec<Word<N>>,
+    pub possible_secrets: Vec<Word<N>>,
 }
 
 impl<const N: usize> GameState<N> {
@@ -39,14 +39,14 @@ impl<const N: usize> GameState<N> {
         observed_result: Clue<N>,
     ) -> Result<Self, Error> {
         let secret = self
-            .secret
+            .possible_secrets
             .iter()
             .filter(|secret| compare_words(**secret, guess) == observed_result)
             .copied()
             .collect();
         Ok(Self {
-            dictionary: self.dictionary.clone(),
-            secret,
+            allowed_guesses: self.allowed_guesses.clone(),
+            possible_secrets: secret,
         })
     }
 
@@ -62,7 +62,7 @@ impl<const N: usize> GameState<N> {
             Some(Ok((None, self.clone()))),
             move |res_state| {
                 if let Ok((_prev_clue, state)) = res_state {
-                    (state.secret.len() > 1).then(|| {
+                    (state.possible_secrets.len() > 1).then(|| {
                         let guess = strategy(state);
                         let clue = compare_words(secret_word, guess);
                         state
@@ -77,14 +77,14 @@ impl<const N: usize> GameState<N> {
     }
 
     pub fn best_guess(&self) -> Result<Word<N>, Error> {
-        if self.secret.len() == 0 {
+        if self.possible_secrets.len() == 0 {
             return Err(Error::NoWordsRemaining);
         }
         Ok(self
-            .dictionary
+            .allowed_guesses
             .iter()
             .min_by_key(|guess| {
-                self.secret
+                self.possible_secrets
                     .iter()
                     .map(|secret| compare_words(*secret, **guess))
                     .counts()
@@ -149,14 +149,14 @@ mod test {
             .map(|s| s.parse())
             .collect::<Result<_, _>>()?;
         let before = GameState {
-            dictionary: secret.clone(),
-            secret,
+            allowed_guesses: secret.clone(),
+            possible_secrets: secret,
         };
         let after = before
             .after_guess("chart".parse()?, "_G__G".parse()?)
             .unwrap();
 
-        assert_eq!(after.secret, vec!["ghost".parse()?]);
+        assert_eq!(after.possible_secrets, vec!["ghost".parse()?]);
         Ok(())
     }
 }
