@@ -4,7 +4,7 @@ use itertools::Itertools;
 pub enum Error {
     IncorrectStringLength,
     NoDictionaryFile,
-    DictionaryReadError(std::io::Error),
+    WordListReadError(std::io::Error),
     NoWordsRemaining,
     NotTileChar(char),
 }
@@ -33,21 +33,6 @@ pub struct GameState<const N: usize> {
 }
 
 impl<const N: usize> GameState<N> {
-    pub fn new<'a>(word_iter: impl Iterator<Item = &'a String>) -> Self {
-        let dictionary: Vec<Word<N>> = word_iter
-            .filter(|s| s.len() == N)
-            .map(|s| {
-                let mut letters = ['0'; N];
-                letters.iter_mut().zip(s.chars()).for_each(|(out, c)| {
-                    *out = c;
-                });
-                Word { letters }
-            })
-            .collect();
-        let secret = dictionary.clone();
-        Self { dictionary, secret }
-    }
-
     pub fn after_guess(
         &self,
         guess: Word<N>,

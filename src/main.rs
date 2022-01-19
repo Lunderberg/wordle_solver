@@ -73,13 +73,21 @@ struct Options {
 
     #[structopt(short = "s", long = "simulate")]
     simulate: bool,
+
+    #[structopt(long = "allowed_word_list", default_value = "wordle")]
+    word_list: String,
 }
 
 fn main() -> Result<(), Error> {
     let opt = Options::from_args();
 
-    let dictionary = wordle::read_dictionary()?;
-    let game_state = GameState::<5>::new(dictionary.iter());
+    let game_state = if opt.word_list == "wordle" {
+        GameState::<5>::from_wordle()
+    } else if opt.word_list == "scrabble" {
+        GameState::<5>::from_scrabble()
+    } else {
+        GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
+    };
 
     if opt.interactive {
         run_interactively(game_state.clone())?;
