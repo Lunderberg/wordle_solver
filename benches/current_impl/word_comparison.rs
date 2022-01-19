@@ -6,8 +6,6 @@ use rand::{Rng, SeedableRng};
 use wordle::Word;
 
 pub fn bench<const N: usize>(b: &mut Bencher) {
-    use wordle::compare_words;
-
     let seed = 0;
     let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
 
@@ -28,7 +26,7 @@ pub fn bench<const N: usize>(b: &mut Bencher) {
     let setup = move || (random_word(), random_word());
 
     let routine =
-        |vals: &mut (Word<N>, Word<N>)| compare_words::<N>(vals.0, vals.1);
+        |vals: &mut (Word<N>, Word<N>)| vals.0.compare_with_guess(vals.1);
 
     b.iter_batched_ref(setup, routine, BatchSize::SmallInput);
 }

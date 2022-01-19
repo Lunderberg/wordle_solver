@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use super::Strategy;
 
 #[derive(Debug)]
 pub enum Error {
@@ -32,6 +32,30 @@ pub struct GameState<const N: usize> {
     pub possible_secrets: Vec<Word<N>>,
 }
 
+impl<const N: usize> Word<N> {
+    pub fn compare_with_guess(&self, guess: Word<N>) -> Clue<N> {
+        let mut tiles = [Tile::NotPresentInWord; N];
+
+        for i in 0..N {
+            tiles[i] = if guess[i] == self[i] {
+                Tile::Correct
+            } else {
+                let num_occurrences =
+                    self.iter().filter(|c| **c == guess[i]).count();
+                let i_occurrence =
+                    guess.iter().take(i).filter(|c| **c == guess[i]).count();
+                if i_occurrence < num_occurrences {
+                    Tile::WrongPosition
+                } else {
+                    Tile::NotPresentInWord
+                }
+            }
+        }
+
+        Clue { tiles }
+    }
+}
+
 impl<const N: usize> GameState<N> {
     pub fn after_guess(
         &self,
@@ -41,7 +65,9 @@ impl<const N: usize> GameState<N> {
         let secret = self
             .possible_secrets
             .iter()
-            .filter(|secret| compare_words(**secret, guess) == observed_result)
+            .filter(|secret| {
+                secret.compare_with_guess(guess) == observed_result
+            })
             .copied()
             .collect();
         Ok(Self {
@@ -50,21 +76,19 @@ impl<const N: usize> GameState<N> {
         })
     }
 
-    pub fn simulate_strategy<F>(
+    pub fn simulate_strategy<'a, S: Strategy<N>>(
         &self,
         secret_word: Word<N>,
-        mut strategy: F,
-    ) -> impl Iterator<Item = Result<(Option<(Word<N>, Clue<N>)>, Self), Error>>
-    where
-        F: FnMut(&Self) -> Word<N>,
+        strategy: &'a mut S,
+    ) -> impl Iterator<Item = Result<(Option<(Word<N>, Clue<N>)>, Self), Error>> + 'a
     {
         std::iter::successors(
             Some(Ok((None, self.clone()))),
             move |res_state| {
                 if let Ok((_prev_clue, state)) = res_state {
                     (state.possible_secrets.len() > 1).then(|| {
-                        let guess = strategy(state);
-                        let clue = compare_words(secret_word, guess);
+                        let guess = strategy.make_guess(state)?;
+                        let clue = secret_word.compare_with_guess(guess);
                         state
                             .after_guess(guess, clue)
                             .map(|new_state| (Some((guess, clue)), new_state))
@@ -75,51 +99,6 @@ impl<const N: usize> GameState<N> {
             },
         )
     }
-
-    pub fn best_guess(&self) -> Result<Word<N>, Error> {
-        if self.possible_secrets.len() == 0 {
-            return Err(Error::NoWordsRemaining);
-        }
-        Ok(self
-            .allowed_guesses
-            .iter()
-            .min_by_key(|guess| {
-                self.possible_secrets
-                    .iter()
-                    .map(|secret| compare_words(*secret, **guess))
-                    .counts()
-                    .into_values()
-                    .max()
-                    .unwrap()
-            })
-            .unwrap()
-            .clone())
-    }
-}
-
-pub fn compare_words<const N: usize>(
-    secret_word: Word<N>,
-    guess: Word<N>,
-) -> Clue<N> {
-    let mut tiles = [Tile::NotPresentInWord; N];
-
-    for i in 0..N {
-        tiles[i] = if guess[i] == secret_word[i] {
-            Tile::Correct
-        } else {
-            let num_occurrences =
-                secret_word.iter().filter(|c| **c == guess[i]).count();
-            let i_occurrence =
-                guess.iter().take(i).filter(|c| **c == guess[i]).count();
-            if i_occurrence < num_occurrences {
-                Tile::WrongPosition
-            } else {
-                Tile::NotPresentInWord
-            }
-        }
-    }
-
-    Clue { tiles }
 }
 
 #[cfg(test)]
@@ -136,7 +115,9 @@ mod test {
         #[case] guess: &str,
         #[case] expected: &str,
     ) -> Result<(), Error> {
-        let res = compare_words::<5>(secret.parse()?, guess.parse()?);
+        let secret: Word<5> = secret.parse()?;
+        let guess: Word<5> = guess.parse()?;
+        let res = secret.compare_with_guess(guess);
         let expected: Clue<5> = expected.parse()?;
         assert_eq!(res, expected);
         Ok(())

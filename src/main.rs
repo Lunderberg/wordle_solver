@@ -3,14 +3,17 @@ use wordle::*;
 use rand::Rng;
 use structopt::StructOpt;
 
-fn run_interactively(mut game_state: GameState<5>) -> Result<(), Error> {
+fn run_interactively<S: Strategy<N>, const N: usize>(
+    strategy: &mut S,
+    mut game_state: GameState<N>,
+) -> Result<(), Error> {
     while game_state.possible_secrets.len() > 1 {
         println!(
             "{} possibilities remaining",
             game_state.possible_secrets.len()
         );
 
-        let best_guess = game_state.best_guess()?;
+        let best_guess = strategy.make_guess(&game_state)?;
         println!("Best word to guess = {}", best_guess);
 
         let mut line = "".to_string();
@@ -27,13 +30,11 @@ fn run_interactively(mut game_state: GameState<5>) -> Result<(), Error> {
     Ok(())
 }
 
-fn simulate_strategy<F, const N: usize>(
+fn simulate_strategy<S: Strategy<N>, const N: usize>(
     game_state: &GameState<N>,
-    strategy: F,
+    strategy: &mut S,
     secret_word: Word<N>,
-) where
-    F: FnMut(&GameState<N>) -> Word<N>,
-{
+) {
     game_state
         .simulate_strategy(secret_word, strategy)
         .for_each(|res_state| {
@@ -92,8 +93,10 @@ fn main() -> Result<(), Error> {
         GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
     };
 
+    let mut strategy = strategy::MiniMax;
+
     if opt.interactive {
-        run_interactively(game_state.clone())?;
+        run_interactively(&mut strategy, game_state.clone())?;
     }
 
     if opt.simulate {
@@ -105,8 +108,7 @@ fn main() -> Result<(), Error> {
                 game_state.possible_secrets[rand::thread_rng()
                     .gen_range(0..game_state.possible_secrets.len())]
             });
-        let strategy = |state: &GameState<5>| state.best_guess().unwrap();
-        simulate_strategy(&game_state, strategy, secret_word);
+        simulate_strategy(&game_state, &mut strategy, secret_word);
     }
 
     Ok(())
