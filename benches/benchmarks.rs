@@ -9,11 +9,13 @@
 use criterion::{criterion_group, criterion_main};
 
 mod current_impl;
+mod strategy_minimax;
 mod word_comparison;
 
 criterion_group!(
     benches,
     current_impl::benchmark_group,
-    word_comparison::benchmark_group
+    word_comparison::benchmark_group,
+    strategy_minimax::benchmark_group,
 );
 criterion_main!(benches);
