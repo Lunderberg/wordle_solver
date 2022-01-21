@@ -17,11 +17,7 @@ impl GameStateGenerator {
 
     fn random_word<const N: usize>(&mut self) -> Word<N> {
         let letters = (0..N)
-            .map(|_| -> char {
-                let initial: u32 = 'A'.into();
-                let offset = self.rng.gen_range(0..26);
-                ((initial as u8) + offset).into()
-            })
+            .map(|_| self.rng.gen_range(0..26))
             .collect::<Vec<_>>()
             .as_slice()
             .try_into()

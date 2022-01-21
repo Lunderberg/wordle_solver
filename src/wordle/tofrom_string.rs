@@ -26,15 +26,25 @@ impl<const N: usize> Display for Clue<N> {
 impl<const N: usize> FromStr for Word<N> {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Error> {
-        if s.len() == N {
-            let mut letters = ['0'; N];
-            letters.iter_mut().zip(s.chars()).for_each(|(out, c)| {
-                *out = c;
-            });
+        if !s.chars().all(|c| c.is_ascii_alphabetic()) {
+            Err(Error::InvalidString(s.to_string()))
+        } else if s.len() != N {
+            Err(Error::IncorrectStringLength)
+        } else {
+            let mut letters = [0; N];
+            s.chars()
+                .map(|c| c.to_ascii_uppercase())
+                .map(|c| {
+                    let codepoint: u32 = c.into();
+                    let a: u32 = 'A'.into();
+                    (codepoint - a) as u8
+                })
+                .zip(letters.iter_mut())
+                .for_each(|(val, out)| {
+                    *out = val;
+                });
 
             Ok(Self { letters })
-        } else {
-            Err(Error::IncorrectStringLength)
         }
     }
 }

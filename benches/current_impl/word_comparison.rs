@@ -11,11 +11,7 @@ pub fn bench<const N: usize>(b: &mut Bencher) {
 
     let mut random_word = move || {
         let letters = (0..N)
-            .map(|_| -> char {
-                let initial: u32 = 'A'.into();
-                let offset = rng.gen_range(0..26);
-                ((initial as u8) + offset).into()
-            })
+            .map(|_| rng.gen_range(0..26))
             .collect::<Vec<_>>()
             .as_slice()
             .try_into()

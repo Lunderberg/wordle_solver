@@ -3,6 +3,7 @@ use super::Strategy;
 #[derive(Debug)]
 pub enum Error {
     IncorrectStringLength,
+    InvalidString(String),
     NoDictionaryFile,
     WordListReadError(std::io::Error),
     NoWordsRemaining,
@@ -18,7 +19,7 @@ pub enum Tile {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Word<const N: usize> {
-    pub letters: [char; N],
+    pub letters: [u8; N],
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -36,19 +37,21 @@ impl<const N: usize> Word<N> {
     pub fn compare_with_guess(&self, guess: Word<N>) -> Clue<N> {
         let mut tiles = [Tile::NotPresentInWord; N];
 
+        let mut excess_letters = [0_u8; 26];
+        for i in 0..N {
+            if guess[i] != self[i] {
+                excess_letters[self[i] as usize] += 1;
+            }
+        }
+
         for i in 0..N {
             tiles[i] = if guess[i] == self[i] {
                 Tile::Correct
+            } else if excess_letters[guess[i] as usize] > 0 {
+                excess_letters[guess[i] as usize] -= 1;
+                Tile::WrongPosition
             } else {
-                let num_occurrences =
-                    self.iter().filter(|c| **c == guess[i]).count();
-                let i_occurrence =
-                    guess.iter().take(i).filter(|c| **c == guess[i]).count();
-                if i_occurrence < num_occurrences {
-                    Tile::WrongPosition
-                } else {
-                    Tile::NotPresentInWord
-                }
+                Tile::NotPresentInWord
             }
         }
 

@@ -73,13 +73,6 @@ where
     I: Iterator<Item = &'a str>,
 {
     fn collect_words(&mut self) -> Vec<Word<N>> {
-        self.map(|s| {
-            let mut letters = ['0'; N];
-            letters.iter_mut().zip(s.chars()).for_each(|(out, c)| {
-                *out = c;
-            });
-            Word { letters }
-        })
-        .collect()
+        self.map(|s| s.parse().unwrap()).collect()
     }
 }

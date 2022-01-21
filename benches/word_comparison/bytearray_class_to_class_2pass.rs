@@ -62,12 +62,6 @@ pub fn compare_words<const N: usize>(
     Clue { tiles }
 }
 
-impl<const N: usize> Word<N> {
-    pub fn iter(&self) -> impl Iterator<Item = &u8> {
-        self.letters.iter()
-    }
-}
-
 impl<const N: usize> ops::Index<usize> for Word<N> {
     type Output = u8;
     fn index(&self, i: usize) -> &u8 {
