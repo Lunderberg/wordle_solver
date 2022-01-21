@@ -6,7 +6,10 @@ use std::str::FromStr;
 
 impl<const N: usize> Display for Word<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        self.letters.iter().try_for_each(|c| write!(f, "{}", c))
+        self.letters
+            .iter()
+            .map(|i| char::from_u32(('A' as u32) + (*i as u32)).unwrap())
+            .try_for_each(|c| write!(f, "{}", c))
     }
 }
 
