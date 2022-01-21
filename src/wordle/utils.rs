@@ -37,6 +37,7 @@ impl<const N: usize> GameState<N> {
         std::str::from_utf8(bytes)
             .unwrap()
             .split("\n")
+            .filter(|word| word.len() == N)
             .collect_words()
     }
 
