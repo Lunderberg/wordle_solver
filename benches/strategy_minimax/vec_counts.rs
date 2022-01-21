@@ -3,14 +3,9 @@ use criterion::{BatchSize, Bencher};
 use super::utils::GameStateGenerator;
 use wordle::{GameState, Tile};
 
-pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
+pub fn bench<const N: usize>(bencher: &mut Bencher, sizes: &(usize, usize)) {
     let (num_allowed_guesses, num_possible_secrets) = *sizes;
 
-    // I'd like this to be a const generic, but it will require the
-    // generic_const_exprs feature
-    // (https://github.com/rust-lang/rust/issues/76560) in order to
-    // compute ARR_SIZE.
-    const N: usize = 5;
     assert!(num_allowed_guesses >= num_possible_secrets);
 
     let mut generator = GameStateGenerator::new();
@@ -24,8 +19,8 @@ pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
             .allowed_guesses
             .iter()
             .min_by_key(|guess| {
-                const ARR_SIZE: usize = 3usize.pow(N as u32);
-                let mut counts = [0; ARR_SIZE];
+                let arr_size: usize = 3usize.pow(N as u32);
+                let mut counts = vec![0; arr_size];
                 state.possible_secrets.iter().for_each(|secret| {
                     let clue = secret.compare_with_guess(**guess);
                     let clue_id = clue
