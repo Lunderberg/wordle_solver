@@ -3,7 +3,12 @@ use criterion::{BatchSize, Bencher};
 use super::utils::GameStateGenerator;
 use wordle::GameState;
 
-pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
+pub fn bench<
+    CounterType: num::Unsigned + std::cmp::Ord + std::ops::AddAssign + std::marker::Copy,
+>(
+    bencher: &mut Bencher,
+    sizes: &(usize, usize),
+) {
     let (num_allowed_guesses, num_possible_secrets) = *sizes;
 
     // I'd like this to be a const generic, but it will require the
@@ -25,14 +30,13 @@ pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
             .iter()
             .min_by_key(|guess| {
                 const ARR_SIZE: usize = 3usize.pow(N as u32);
-                let mut counts = [0; ARR_SIZE];
+                let mut counts = [CounterType::zero(); ARR_SIZE];
                 state.possible_secrets.iter().for_each(|secret| {
                     let clue = secret.compare_with_guess(**guess);
-                    counts[clue.id()] += 1;
+                    counts[clue.id()] += CounterType::one();
                 });
 
-                let max_counts: usize = *counts.iter().max().unwrap();
-                max_counts
+                *counts.iter().max().unwrap()
             })
             .unwrap()
             .clone()

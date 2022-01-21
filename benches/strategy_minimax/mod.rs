@@ -30,15 +30,51 @@ pub fn benchmark_group(c: &mut Criterion) {
         );
 
         group.bench_with_input(
-            BenchmarkId::new("array_counts", format!("{:?}", sizes)),
+            BenchmarkId::new("array_counts_usize", format!("{:?}", sizes)),
             sizes,
-            array_counts::bench,
+            array_counts::bench::<usize>,
         );
 
         group.bench_with_input(
-            BenchmarkId::new("vec_counts", format!("{:?}", sizes)),
+            BenchmarkId::new("array_counts_u8", format!("{:?}", sizes)),
             sizes,
-            vec_counts::bench::<5>,
+            array_counts::bench::<u8>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("array_counts_u16", format!("{:?}", sizes)),
+            sizes,
+            array_counts::bench::<u16>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("array_counts_u32", format!("{:?}", sizes)),
+            sizes,
+            array_counts::bench::<u32>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("vec_counts_usize", format!("{:?}", sizes)),
+            sizes,
+            vec_counts::bench::<usize, 5>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("vec_counts_u8", format!("{:?}", sizes)),
+            sizes,
+            vec_counts::bench::<u8, 5>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("vec_counts_u16", format!("{:?}", sizes)),
+            sizes,
+            vec_counts::bench::<u16, 5>,
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("vec_counts_u32", format!("{:?}", sizes)),
+            sizes,
+            vec_counts::bench::<u32, 5>,
         );
     });
 
