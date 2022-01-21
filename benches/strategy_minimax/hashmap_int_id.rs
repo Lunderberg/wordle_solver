@@ -2,7 +2,7 @@ use criterion::{BatchSize, Bencher};
 use itertools::Itertools;
 
 use super::utils::GameStateGenerator;
-use wordle::{GameState, Tile};
+use wordle::GameState;
 
 pub fn bench<const N: usize>(bencher: &mut Bencher, sizes: &(usize, usize)) {
     let (num_allowed_guesses, num_possible_secrets) = *sizes;
@@ -26,15 +26,7 @@ pub fn bench<const N: usize>(bencher: &mut Bencher, sizes: &(usize, usize)) {
                     .iter()
                     .map(|secret| {
                         let clue = secret.compare_with_guess(**guess);
-                        let clue_id = clue
-                            .iter()
-                            .map(|tile| match tile {
-                                Tile::Correct => 0,
-                                Tile::WrongPosition => 1,
-                                Tile::NotPresentInWord => 2,
-                            })
-                            .fold(0, |acc, trit| 3 * acc + trit);
-                        clue_id
+                        clue.id()
                     })
                     .counts()
                     .into_values()

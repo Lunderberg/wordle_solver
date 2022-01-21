@@ -1,7 +1,7 @@
 use criterion::{BatchSize, Bencher};
 
 use super::utils::GameStateGenerator;
-use wordle::{GameState, Tile};
+use wordle::GameState;
 
 pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
     let (num_allowed_guesses, num_possible_secrets) = *sizes;
@@ -28,15 +28,7 @@ pub fn bench(bencher: &mut Bencher, sizes: &(usize, usize)) {
                 let mut counts = [0; ARR_SIZE];
                 state.possible_secrets.iter().for_each(|secret| {
                     let clue = secret.compare_with_guess(**guess);
-                    let clue_id = clue
-                        .iter()
-                        .map(|tile| match tile {
-                            Tile::Correct => 0,
-                            Tile::WrongPosition => 1,
-                            Tile::NotPresentInWord => 2,
-                        })
-                        .fold(0, |acc, trit| 3 * acc + trit);
-                    counts[clue_id] += 1;
+                    counts[clue.id()] += 1;
                 });
 
                 let max_counts: usize = *counts.iter().max().unwrap();

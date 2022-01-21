@@ -1,6 +1,4 @@
-use super::{Error, GameState, Word};
-
-use itertools::Itertools;
+use super::{Clue, Error, GameState, Word};
 
 pub trait Strategy<const N: usize> {
     fn make_guess(&mut self, state: &GameState<N>) -> Result<Word<N>, Error>;
@@ -17,14 +15,14 @@ impl<const N: usize> Strategy<N> for MiniMax {
             .allowed_guesses
             .iter()
             .min_by_key(|guess| {
-                state
-                    .possible_secrets
-                    .iter()
-                    .map(|secret| secret.compare_with_guess(**guess))
-                    .counts()
-                    .into_values()
-                    .max()
-                    .unwrap()
+                let mut counts = vec![0; Clue::<N>::num_clues()];
+                state.possible_secrets.iter().for_each(|secret| {
+                    let clue = secret.compare_with_guess(**guess);
+                    counts[clue.id()] += 1;
+                });
+
+                let max_counts: usize = *counts.iter().max().unwrap();
+                max_counts
             })
             .unwrap()
             .clone())

@@ -56,6 +56,22 @@ impl<const N: usize> Word<N> {
     }
 }
 
+impl<const N: usize> Clue<N> {
+    pub fn num_clues() -> usize {
+        3_usize.pow(N as u32)
+    }
+
+    pub fn id(&self) -> usize {
+        self.iter()
+            .map(|tile| match tile {
+                Tile::Correct => 0,
+                Tile::WrongPosition => 1,
+                Tile::NotPresentInWord => 2,
+            })
+            .fold(0, |acc, trit| 3 * acc + trit)
+    }
+}
+
 impl<const N: usize> GameState<N> {
     pub fn after_guess(
         &self,
