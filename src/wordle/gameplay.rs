@@ -17,7 +17,7 @@ pub enum Tile {
     NotPresentInWord,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Word<const N: usize> {
     pub letters: [u8; N],
 }
@@ -60,6 +60,10 @@ impl<const N: usize> Word<N> {
 }
 
 impl<const N: usize> Clue<N> {
+    pub fn all_correct(&self) -> bool {
+        self.iter().all(|&tile| tile == Tile::Correct)
+    }
+
     pub fn num_clues() -> usize {
         3_usize.pow(N as u32)
     }
@@ -80,7 +84,7 @@ impl<const N: usize> GameState<N> {
         &self,
         guess: Word<N>,
         observed_result: Clue<N>,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         let secret = self
             .possible_secrets
             .iter()
@@ -89,10 +93,10 @@ impl<const N: usize> GameState<N> {
             })
             .copied()
             .collect();
-        Ok(Self {
+        Self {
             allowed_guesses: self.allowed_guesses.clone(),
             possible_secrets: secret,
-        })
+        }
     }
 
     pub fn simulate_strategy<'a, S: Strategy<N>>(
@@ -108,9 +112,8 @@ impl<const N: usize> GameState<N> {
                     (state.possible_secrets.len() > 1).then(|| {
                         let guess = strategy.make_guess(state)?;
                         let clue = secret_word.compare_with_guess(guess);
-                        state
-                            .after_guess(guess, clue)
-                            .map(|new_state| (Some((guess, clue)), new_state))
+                        let new_state = state.after_guess(guess, clue);
+                        Ok((Some((guess, clue)), new_state))
                     })
                 } else {
                     None
@@ -152,9 +155,7 @@ mod test {
             allowed_guesses: secret.clone(),
             possible_secrets: secret,
         };
-        let after = before
-            .after_guess("chart".parse()?, "_G__G".parse()?)
-            .unwrap();
+        let after = before.after_guess("chart".parse()?, "_G__G".parse()?);
 
         assert_eq!(after.possible_secrets, vec!["ghost".parse()?]);
         Ok(())

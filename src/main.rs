@@ -3,6 +3,8 @@ use wordle::*;
 use rand::Rng;
 use structopt::StructOpt;
 
+use itertools::Itertools;
+
 fn run_interactively<S: Strategy<N>, const N: usize>(
     strategy: &mut S,
     mut game_state: GameState<N>,
@@ -21,7 +23,7 @@ fn run_interactively<S: Strategy<N>, const N: usize>(
         let clue = line.trim().parse()?;
 
         println!("Clue received was {}", clue);
-        game_state = game_state.after_guess(best_guess, clue)?;
+        game_state = game_state.after_guess(best_guess, clue);
     }
 
     assert_eq!(game_state.possible_secrets.len(), 1);
@@ -78,8 +80,11 @@ struct Options {
     #[structopt(short = "s", long = "simulate")]
     simulate: bool,
 
-    #[structopt(long = "allowed_word_list", default_value = "wordle")]
+    #[structopt(long = "allowed-word-list", default_value = "wordle")]
     word_list: String,
+
+    #[structopt(long = "analysis")]
+    analysis: bool,
 }
 
 fn main() -> Result<(), Error> {
@@ -109,6 +114,24 @@ fn main() -> Result<(), Error> {
                     .gen_range(0..game_state.possible_secrets.len())]
             });
         simulate_strategy(&game_state, &mut strategy, secret_word);
+    }
+
+    if opt.analysis {
+        let paths = strategy.deterministic_strategy_results(game_state.clone());
+        println!("Num paths: {}", paths.len());
+        let unique_endings = paths
+            .iter()
+            .map(|path| path.last().unwrap())
+            .unique()
+            .count();
+        println!("Num uniques: {}", unique_endings);
+        let by_num_guesses = paths.iter().into_group_map_by(|p| p.len());
+        by_num_guesses
+            .iter()
+            .sorted_by_key(|(num, _paths)| *num)
+            .for_each(|(num, paths)| {
+                println!("{} guesses to solve {} words", num, paths.len())
+            });
     }
 
     Ok(())
