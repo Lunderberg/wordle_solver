@@ -6,7 +6,7 @@ use rand::{Rng, SeedableRng};
 use wordle::{GameState, Strategy, Word};
 
 pub fn bench<S: Strategy<N>, const N: usize>(
-    mut strategy: S,
+    strategy: S,
 ) -> impl FnMut(&mut Bencher, &(usize, usize)) {
     move |bencher: &mut Bencher,
           &(allowed_guess_size, possible_secrets_size)| {
