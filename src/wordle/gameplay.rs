@@ -17,7 +17,7 @@ pub enum Tile {
     NotPresentInWord,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Word<const N: usize> {
     pub letters: [u8; N],
 }

@@ -83,6 +83,9 @@ struct Options {
     #[structopt(long = "allowed-word-list", default_value = "wordle")]
     word_list: String,
 
+    #[structopt(long = "strategy")]
+    strategy: Option<String>,
+
     #[structopt(long = "analysis")]
     analysis: bool,
 }
@@ -98,7 +101,17 @@ fn main() -> Result<(), Error> {
         GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
     };
 
-    let mut strategy = strategy::MiniMax;
+    let mut strategy: Box<dyn Strategy<5>> =
+        match opt.strategy.as_ref().map(|s| s.as_str()) {
+            Some("minimax") | None => Box::new(strategy::MiniMax),
+            Some("minimean") => Box::new(strategy::MinimizeMean),
+            Some("minimize-sum-squares") => {
+                Box::new(strategy::MinimizeSumSquares)
+            }
+            Some("early-guesses") => Box::new(strategy::EarlyGuesses),
+            Some("alphabetical-order") => Box::new(strategy::AlphabeticalOrder),
+            Some(name) => panic!("Unknown strategy: {}", name),
+        };
 
     if opt.interactive {
         run_interactively(&mut strategy, game_state.clone())?;
@@ -118,13 +131,11 @@ fn main() -> Result<(), Error> {
 
     if opt.analysis {
         let paths = strategy.deterministic_strategy_results(game_state.clone());
-        println!("Num paths: {}", paths.len());
-        let unique_endings = paths
-            .iter()
-            .map(|path| path.last().unwrap())
-            .unique()
-            .count();
-        println!("Num uniques: {}", unique_endings);
+        let mean_guesses = (paths.iter().map(|p| p.len()).sum::<usize>()
+            as f32)
+            / (paths.len() as f32);
+        println!("Mean guesses: {}", mean_guesses);
+
         let by_num_guesses = paths.iter().into_group_map_by(|p| p.len());
         by_num_guesses
             .iter()
