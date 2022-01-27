@@ -27,14 +27,16 @@ impl<const N: usize> HeuristicStrategy<N> for MiniMax {
 pub struct MinimizeMean;
 
 impl<const N: usize> HeuristicStrategy<N> for MinimizeMean {
-    type Output = usize;
+    type Output = Reverse<usize>;
     fn heuristic(&self, state: &GameState<N>, guess: &Word<N>) -> Self::Output {
-        state
-            .possible_secrets
-            .iter()
-            .map(|secret| secret.compare_with_guess(*guess))
-            .unique()
-            .count()
+        Reverse(
+            state
+                .possible_secrets
+                .iter()
+                .map(|secret| secret.compare_with_guess(*guess))
+                .unique()
+                .count(),
+        )
     }
 }
 
