@@ -77,6 +77,25 @@ impl<const N: usize> Clue<N> {
             })
             .fold(0, |acc, trit| 3 * acc + trit)
     }
+
+    pub fn from_id(mut id: usize) -> Self {
+        let mut tiles = [Tile::NotPresentInWord; N];
+
+        std::iter::repeat_with(move || {
+            let tile_id = id % 3;
+            id /= 3;
+            match tile_id {
+                0 => Tile::Correct,
+                1 => Tile::WrongPosition,
+                2 => Tile::NotPresentInWord,
+                _ => panic!("Math is broken"),
+            }
+        })
+        .zip(tiles.iter_mut().rev())
+        .for_each(|(val, out)| *out = val);
+
+        Self { tiles }
+    }
 }
 
 impl<const N: usize> GameState<N> {
@@ -159,5 +178,19 @@ mod test {
 
         assert_eq!(after.possible_secrets, vec!["ghost".parse()?]);
         Ok(())
+    }
+
+    #[test]
+    fn test_clue_id() {
+        use std::collections::HashSet;
+        let mut all_clues = HashSet::new();
+        for id in 0..243 {
+            let clue: Clue<5> = Clue::from_id(id);
+            let roundtrip_id = clue.id();
+            assert_eq!(id, roundtrip_id);
+            all_clues.insert(clue);
+        }
+
+        assert_eq!(all_clues.len(), 243);
     }
 }

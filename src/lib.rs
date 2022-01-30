@@ -1,2 +1,2 @@
 mod wordle;
-pub use wordle::*;
+pub use self::wordle::*;
