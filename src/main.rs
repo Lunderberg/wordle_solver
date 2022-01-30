@@ -6,7 +6,7 @@ use structopt::StructOpt;
 use itertools::Itertools;
 
 fn run_interactively<S: Strategy<N>, const N: usize>(
-    strategy: &mut S,
+    strategy: &S,
     mut game_state: GameState<N>,
 ) -> Result<(), Error> {
     while game_state.possible_secrets.len() > 1 {
@@ -34,7 +34,7 @@ fn run_interactively<S: Strategy<N>, const N: usize>(
 
 fn simulate_strategy<S: Strategy<N>, const N: usize>(
     game_state: &GameState<N>,
-    strategy: &mut S,
+    strategy: &S,
     secret_word: Word<N>,
 ) {
     game_state
@@ -84,7 +84,7 @@ struct Options {
     word_list: String,
 
     #[structopt(long = "strategy")]
-    strategy: Option<String>,
+    strategy: Vec<String>,
 
     #[structopt(long = "analysis")]
     analysis: bool,
@@ -101,20 +101,18 @@ fn main() -> Result<(), Error> {
         GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
     };
 
-    let mut strategy: Box<dyn Strategy<5>> =
-        match opt.strategy.as_ref().map(|s| s.as_str()) {
-            Some("minimax") | None => Box::new(strategy::MiniMax),
-            Some("minimean") => Box::new(strategy::MinimizeMean),
-            Some("minimize-sum-squares") => {
-                Box::new(strategy::MinimizeSumSquares)
-            }
-            Some("early-guesses") => Box::new(strategy::EarlyGuesses),
-            Some("alphabetical-order") => Box::new(strategy::AlphabeticalOrder),
-            Some(name) => panic!("Unknown strategy: {}", name),
-        };
+    let strategy = opt
+        .strategy
+        .first()
+        .map(|name| {
+            strategy::all_strategies()
+                .remove(name)
+                .unwrap_or_else(|| panic!("Unknown strategy: {}", name))
+        })
+        .unwrap_or_else(|| Box::new(strategy::MiniMax));
 
     if opt.interactive {
-        run_interactively(&mut strategy, game_state.clone())?;
+        run_interactively(&strategy, game_state.clone())?;
     }
 
     if opt.simulate {
@@ -126,7 +124,7 @@ fn main() -> Result<(), Error> {
                 game_state.possible_secrets[rand::thread_rng()
                     .gen_range(0..game_state.possible_secrets.len())]
             });
-        simulate_strategy(&game_state, &mut strategy, secret_word);
+        simulate_strategy(&game_state, &strategy, secret_word);
     }
 
     if opt.analysis {

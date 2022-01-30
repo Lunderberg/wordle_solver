@@ -121,7 +121,7 @@ impl<const N: usize> GameState<N> {
     pub fn simulate_strategy<'a, S: Strategy<N>>(
         &self,
         secret_word: Word<N>,
-        strategy: &'a mut S,
+        strategy: &'a S,
     ) -> impl Iterator<Item = Result<(Option<(Word<N>, Clue<N>)>, Self), Error>> + 'a
     {
         std::iter::successors(
