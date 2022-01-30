@@ -10,6 +10,7 @@ itertools = "*"
 rstest = "*"
 structopt = "*"
 rand = "*"
+plotly = { version = "*", features = ["kaleido"] }
 
 [dev-dependencies]
 criterion = {version = "*", features=['html_reports']}

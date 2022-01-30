@@ -1,4 +1,5 @@
 use wordle::*;
+mod plots;
 
 use rand::Rng;
 use structopt::StructOpt;
@@ -128,19 +129,49 @@ fn main() -> Result<(), Error> {
     }
 
     if opt.analysis {
-        let paths = strategy.deterministic_strategy_results(game_state.clone());
-        let mean_guesses = (paths.iter().map(|p| p.len()).sum::<usize>()
-            as f32)
-            / (paths.len() as f32);
-        println!("Mean guesses: {}", mean_guesses);
+        let mut plotter = plots::WordlePlotter::new();
 
-        let by_num_guesses = paths.iter().into_group_map_by(|p| p.len());
-        by_num_guesses
-            .iter()
-            .sorted_by_key(|(num, _paths)| *num)
-            .for_each(|(num, paths)| {
-                println!("{} guesses to solve {} words", num, paths.len())
-            });
+        let strategies: Vec<(String, Box<dyn Strategy<5>>)> =
+            if opt.strategy.len() == 0 {
+                strategy::all_strategies()
+                    .into_iter()
+                    .sorted_by_key(|(name, _strategy)| name.clone())
+                    .collect()
+            } else {
+                let mut strategy_map = strategy::all_strategies();
+                opt.strategy
+                    .iter()
+                    .cloned()
+                    .map(|name| {
+                        let strategy =
+                            strategy_map.remove(&name).unwrap_or_else(|| {
+                                panic!("Unknown or repeated strategy: {}", name)
+                            });
+                        (name, strategy)
+                    })
+                    .collect()
+            };
+
+        strategies.into_iter().for_each(|(name, strategy)| {
+            println!("Running strategy '{}'", name);
+            let paths =
+                strategy.deterministic_strategy_results(game_state.clone());
+            let mean_guesses = (paths.iter().map(|p| p.len()).sum::<usize>()
+                as f32)
+                / (paths.len() as f32);
+            println!("Mean guesses: {}", mean_guesses);
+
+            let by_num_guesses = paths.iter().into_group_map_by(|p| p.len());
+            by_num_guesses
+                .iter()
+                .sorted_by_key(|(num, _paths)| *num)
+                .for_each(|(num, paths)| {
+                    println!("{} guesses to solve {} words", num, paths.len())
+                });
+            plotter.add_results(&name, &paths);
+        });
+
+        plotter.plot();
     }
 
     Ok(())
