@@ -14,7 +14,7 @@ pub trait Strategy<const N: usize> {
         let mut final_paths = Vec::new();
         let mut stack = vec![(Vec::new(), initial_state)];
 
-        while stack.len() > 0 {
+        while !stack.is_empty() {
             let (mut path, state) = stack.pop().unwrap();
 
             let guess = self.make_guess(&state).unwrap();
@@ -57,17 +57,16 @@ pub trait HeuristicStrategy<const N: usize> {
 
 impl<H: HeuristicStrategy<N>, const N: usize> Strategy<N> for H {
     fn make_guess(&self, state: &GameState<N>) -> Result<Word<N>, Error> {
-        if state.possible_secrets.len() == 0 {
+        if state.possible_secrets.is_empty() {
             Err(Error::NoWordsRemaining)
         } else if state.possible_secrets.len() == 1 {
             Ok(state.possible_secrets[0])
         } else {
-            Ok(self
+            Ok(*self
                 .word_options(state)
                 .iter()
                 .min_by_key(|guess| self.heuristic(state, guess))
-                .unwrap()
-                .clone())
+                .unwrap())
         }
     }
 }

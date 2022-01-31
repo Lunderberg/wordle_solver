@@ -8,13 +8,13 @@ impl<const N: usize> GameState<N> {
         secret_words: &P2,
     ) -> Result<Self, Error> {
         let allowed_guesses = std::fs::read_to_string(allowed_words)
-            .map_err(|e| Error::WordListReadError(e))?
-            .split("\n")
+            .map_err(Error::WordListReadError)?
+            .split('\n')
             .filter(|s| s.len() == N)
             .collect_words();
         let possible_secrets = std::fs::read_to_string(secret_words)
-            .map_err(|e| Error::WordListReadError(e))?
-            .split("\n")
+            .map_err(Error::WordListReadError)?
+            .split('\n')
             .filter(|s| s.len() == N)
             .collect_words();
 
@@ -36,7 +36,7 @@ impl<const N: usize> GameState<N> {
     fn words_from_bytes(bytes: &[u8]) -> Vec<Word<N>> {
         std::str::from_utf8(bytes)
             .unwrap()
-            .split("\n")
+            .split('\n')
             .filter(|word| word.len() == N)
             .collect_words()
     }

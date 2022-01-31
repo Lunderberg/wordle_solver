@@ -88,7 +88,7 @@ impl<const N: usize> HeuristicStrategy<N> for AlphabeticalOrder {
         _state: &GameState<N>,
         guess: &Word<N>,
     ) -> Self::Output {
-        guess.clone()
+        *guess
     }
 
     fn word_options<'a>(&self, state: &'a GameState<N>) -> &'a Vec<Word<N>> {

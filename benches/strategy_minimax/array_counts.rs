@@ -25,7 +25,7 @@ pub fn bench<
     };
 
     let routine = |state: &mut GameState<N>| {
-        state
+        *state
             .allowed_guesses
             .iter()
             .min_by_key(|guess| {
@@ -39,7 +39,6 @@ pub fn bench<
                 *counts.iter().max().unwrap()
             })
             .unwrap()
-            .clone()
     };
 
     bencher.iter_batched_ref(setup, routine, BatchSize::SmallInput);

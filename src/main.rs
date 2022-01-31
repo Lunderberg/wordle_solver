@@ -49,7 +49,7 @@ fn simulate_strategy<S: Strategy<N>, const N: usize>(
                 _ => (),
             }
             match res_state {
-                Ok((_, state)) if state.possible_secrets.len() == 0 => {
+                Ok((_, state)) if state.possible_secrets.is_empty() => {
                     println!("Strategy failed, erroneously eliminated all possibilities.");
                 }
                 Ok((_, state)) if state.possible_secrets.len() == 1 => {
@@ -132,7 +132,7 @@ fn main() -> Result<(), Error> {
         let mut plotter = plots::WordlePlotter::new();
 
         let strategies: Vec<(String, Box<dyn Strategy<5>>)> =
-            if opt.strategy.len() == 0 {
+            if opt.strategy.is_empty() {
                 strategy::all_strategies()
                     .into_iter()
                     .sorted_by_key(|(name, _strategy)| name.clone())
