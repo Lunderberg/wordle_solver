@@ -1,16 +1,70 @@
 use wordle::*;
 mod plots;
 
+use itertools::Itertools;
 use rand::Rng;
 use structopt::StructOpt;
 
-use itertools::Itertools;
+use std::convert::TryInto;
+
+fn read_clue_from_stdin<const N: usize>() -> Result<Clue<N>, Error> {
+    let mut line = "".to_string();
+    std::io::stdin().read_line(&mut line).unwrap();
+    let clue = line.trim().parse()?;
+    Ok(clue)
+}
+
+fn run_multigame_interactively<
+    S: MultiStrategy<N, GAMES>,
+    const N: usize,
+    const GAMES: usize,
+>(
+    strategy: &S,
+    mut game_state: MultiGameState<N, GAMES>,
+) -> Result<(), Error> {
+    while !game_state.is_finished() {
+        game_state.games.iter().enumerate().for_each(|(i, game)| {
+            println!(
+                "Game {} has {} possibilities remaining",
+                i,
+                game.possible_secrets.len()
+            )
+        });
+
+        let best_guess = strategy.make_guess(&game_state)?;
+        println!("Best word to guess = {}", best_guess);
+
+        let clues: [Clue<N>; GAMES] = (0..GAMES)
+            .map(|_| read_clue_from_stdin())
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .unwrap();
+
+        println!(
+            "Clue received was {}",
+            clues.iter().map(|clue| format!("{}", clue)).join(" ")
+        );
+        game_state = game_state.after_guess(best_guess, clues);
+    }
+
+    assert!(game_state.is_finished());
+    println!(
+        "Winning words are {}",
+        game_state
+            .games
+            .iter()
+            .map(|game| format!("{}", game.possible_secrets[0]))
+            .join(" ")
+    );
+
+    Ok(())
+}
 
 fn run_interactively<S: Strategy<N>, const N: usize>(
     strategy: &S,
     mut game_state: GameState<N>,
 ) -> Result<(), Error> {
-    while game_state.possible_secrets.len() > 1 {
+    while !game_state.is_finished() {
         println!(
             "{} possibilities remaining",
             game_state.possible_secrets.len()
@@ -19,9 +73,7 @@ fn run_interactively<S: Strategy<N>, const N: usize>(
         let best_guess = strategy.make_guess(&game_state)?;
         println!("Best word to guess = {}", best_guess);
 
-        let mut line = "".to_string();
-        std::io::stdin().read_line(&mut line).unwrap();
-        let clue = line.trim().parse()?;
+        let clue = read_clue_from_stdin()?;
 
         println!("Clue received was {}", clue);
         game_state = game_state.after_guess(best_guess, clue);
@@ -89,19 +141,12 @@ struct Options {
 
     #[structopt(long = "analysis")]
     analysis: bool,
+
+    #[structopt(long = "quordle")]
+    quordle: bool,
 }
 
-fn main() -> Result<(), Error> {
-    let opt = Options::from_args();
-
-    let game_state = if opt.word_list == "wordle" {
-        GameState::<5>::from_wordle()
-    } else if opt.word_list == "scrabble" {
-        GameState::<5>::from_scrabble()
-    } else {
-        GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
-    };
-
+fn run_single(game_state: GameState<5>, opt: &Options) -> Result<(), Error> {
     let strategy = opt
         .strategy
         .first()
@@ -119,6 +164,7 @@ fn main() -> Result<(), Error> {
     if opt.simulate {
         let secret_word: Word<5> = opt
             .secret_word
+            .as_ref()
             .map(|s| s.parse())
             .transpose()?
             .unwrap_or_else(|| {
@@ -172,6 +218,57 @@ fn main() -> Result<(), Error> {
         });
 
         plotter.plot();
+    }
+
+    Ok(())
+}
+
+fn run_quordle(
+    game_state: MultiGameState<5, 4>,
+    opt: &Options,
+) -> Result<(), Error> {
+    let strategy = opt
+        .strategy
+        .first()
+        .map(|name| {
+            strategy::all_multi_strategies()
+                .remove(name)
+                .unwrap_or_else(|| panic!("Unknown strategy: {}", name))
+        })
+        .unwrap_or_else(|| {
+            Box::new(strategy::MultiSequential::new(strategy::MiniMax))
+        });
+
+    if opt.interactive {
+        run_multigame_interactively(&strategy, game_state.clone())?;
+    }
+
+    if opt.simulate {
+        panic!("Simulate not implemented for quordle");
+    }
+
+    if opt.analysis {
+        panic!("Analysis not implemented for quordle");
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<(), Error> {
+    let opt = Options::from_args();
+
+    let game_state = if opt.word_list == "wordle" {
+        GameState::<5>::from_wordle()
+    } else if opt.word_list == "scrabble" {
+        GameState::<5>::from_scrabble()
+    } else {
+        GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
+    };
+
+    if opt.quordle {
+        run_quordle(MultiGameState::new(game_state), &opt)?;
+    } else {
+        run_single(game_state, &opt)?;
     }
 
     Ok(())

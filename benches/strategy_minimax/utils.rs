@@ -45,6 +45,7 @@ impl GameStateGenerator {
             .collect();
 
         GameState {
+            made_correct_guess: false,
             allowed_guesses,
             possible_secrets,
         }

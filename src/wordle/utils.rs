@@ -19,6 +19,7 @@ impl<const N: usize> GameState<N> {
             .collect_words();
 
         Ok(Self {
+            made_correct_guess: false,
             allowed_guesses,
             possible_secrets,
         })
@@ -28,6 +29,7 @@ impl<const N: usize> GameState<N> {
         let words: Vec<Word<N>> =
             word_iter.filter(|s| s.len() == N).collect_words();
         Self {
+            made_correct_guess: false,
             allowed_guesses: words.clone(),
             possible_secrets: words,
         }
@@ -44,6 +46,7 @@ impl<const N: usize> GameState<N> {
     pub fn from_scrabble() -> Self {
         let words = Self::words_from_bytes(include_bytes!("scrabble.txt"));
         Self {
+            made_correct_guess: false,
             allowed_guesses: words.clone(),
             possible_secrets: words,
         }
@@ -58,6 +61,7 @@ impl<const N: usize> GameState<N> {
         ));
 
         Self {
+            made_correct_guess: false,
             allowed_guesses,
             possible_secrets,
         }

@@ -1,4 +1,6 @@
-use super::Strategy;
+use super::{MultiStrategy, Strategy};
+
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub enum Error {
@@ -29,8 +31,14 @@ pub struct Clue<const N: usize> {
 
 #[derive(Debug, Clone)]
 pub struct GameState<const N: usize> {
+    pub made_correct_guess: bool,
     pub allowed_guesses: Vec<Word<N>>,
     pub possible_secrets: Vec<Word<N>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MultiGameState<const N: usize, const GAMES: usize> {
+    pub games: [GameState<N>; GAMES],
 }
 
 impl<const N: usize> Word<N> {
@@ -99,6 +107,10 @@ impl<const N: usize> Clue<N> {
 }
 
 impl<const N: usize> GameState<N> {
+    pub fn is_finished(&self) -> bool {
+        self.made_correct_guess
+    }
+
     pub fn after_guess(
         &self,
         guess: Word<N>,
@@ -112,7 +124,10 @@ impl<const N: usize> GameState<N> {
             })
             .copied()
             .collect();
+        let made_correct_guess =
+            self.made_correct_guess || observed_result.all_correct();
         Self {
+            made_correct_guess,
             allowed_guesses: self.allowed_guesses.clone(),
             possible_secrets: secret,
         }
@@ -128,11 +143,70 @@ impl<const N: usize> GameState<N> {
             Some(Ok((None, self.clone()))),
             move |res_state| {
                 if let Ok((_prev_clue, state)) = res_state {
-                    (state.possible_secrets.len() > 1).then(|| {
+                    (!state.is_finished()).then(|| {
                         let guess = strategy.make_guess(state)?;
                         let clue = secret_word.compare_with_guess(guess);
                         let new_state = state.after_guess(guess, clue);
                         Ok((Some((guess, clue)), new_state))
+                    })
+                } else {
+                    None
+                }
+            },
+        )
+    }
+}
+
+impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
+    pub fn new(single: GameState<N>) -> Self {
+        let games = (0..GAMES)
+            .map(|_| single.clone())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        Self { games }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.games.iter().all(|game| game.is_finished())
+    }
+
+    pub fn after_guess(&self, guess: Word<N>, clues: [Clue<N>; GAMES]) -> Self {
+        let games = self
+            .games
+            .iter()
+            .zip(clues.iter())
+            .map(|(game, clue)| game.after_guess(guess, *clue))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        Self { games }
+    }
+
+    pub fn simulate_strategy<'a, S: MultiStrategy<N, GAMES>>(
+        &self,
+        secret_words: [Word<N>; GAMES],
+        strategy: &'a S,
+    ) -> impl Iterator<
+        Item = Result<(Option<(Word<N>, [Clue<N>; GAMES])>, Self), Error>,
+    > + 'a {
+        std::iter::successors(
+            Some(Ok((None, self.clone()))),
+            move |res_state| {
+                if let Ok((_prev_clue, state)) = res_state {
+                    (!state.is_finished()).then(|| {
+                        let guess = strategy.make_guess(state)?;
+                        let clues = secret_words
+                            .iter()
+                            .map(|secret_word| {
+                                secret_word.compare_with_guess(guess)
+                            })
+                            .collect::<Vec<_>>()
+                            .try_into()
+                            .unwrap();
+                        let new_state = state.after_guess(guess, clues);
+                        Ok((Some((guess, clues)), new_state))
                     })
                 } else {
                     None
@@ -171,6 +245,7 @@ mod test {
             .map(|s| s.parse())
             .collect::<Result<_, _>>()?;
         let before = GameState {
+            made_correct_guess: false,
             allowed_guesses: secret.clone(),
             possible_secrets: secret,
         };

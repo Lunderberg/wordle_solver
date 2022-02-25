@@ -2,7 +2,7 @@ mod gameplay;
 pub use gameplay::*;
 
 pub mod strategy;
-pub use strategy::Strategy;
+pub use strategy::{MultiStrategy, Strategy};
 
 #[allow(dead_code)]
 mod operators;

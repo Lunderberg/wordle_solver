@@ -37,6 +37,7 @@ pub fn bench<S: Strategy<N>, const N: usize>(
                     .chain(possible_secrets.iter().cloned())
                     .collect();
             GameState {
+                made_correct_guess: false,
                 possible_secrets,
                 allowed_guesses,
             }

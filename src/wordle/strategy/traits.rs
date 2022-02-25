@@ -1,4 +1,4 @@
-use crate::{Error, GameState, Word};
+use crate::{Error, GameState, MultiGameState, Word};
 
 use itertools::Itertools;
 
@@ -43,6 +43,24 @@ pub trait Strategy<const N: usize> {
 
 impl<const N: usize> Strategy<N> for Box<dyn Strategy<N>> {
     fn make_guess(&self, state: &GameState<N>) -> Result<Word<N>, Error> {
+        self.as_ref().make_guess(state)
+    }
+}
+
+pub trait MultiStrategy<const N: usize, const GAMES: usize> {
+    fn make_guess(
+        &self,
+        state: &MultiGameState<N, GAMES>,
+    ) -> Result<Word<N>, Error>;
+}
+
+impl<const N: usize, const GAMES: usize> MultiStrategy<N, GAMES>
+    for Box<dyn MultiStrategy<N, GAMES>>
+{
+    fn make_guess(
+        &self,
+        state: &MultiGameState<N, GAMES>,
+    ) -> Result<Word<N>, Error> {
         self.as_ref().make_guess(state)
     }
 }
