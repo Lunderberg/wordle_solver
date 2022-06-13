@@ -10,11 +10,11 @@ itertools = "*"
 rstest = "*"
 structopt = "*"
 rand = "*"
+rand_chacha = "*"
 plotly = { version = "*", features = ["kaleido"] }
 
 [dev-dependencies]
 criterion = {version = "*", features=['html_reports']}
-rand_chacha = "*"
 num = "*"
 
 [[bench]]

@@ -2,6 +2,8 @@ use super::{MultiStrategy, Strategy};
 
 use std::convert::TryInto;
 
+use rand::Rng;
+
 #[derive(Debug)]
 pub enum Error {
     IncorrectStringLength,
@@ -10,6 +12,7 @@ pub enum Error {
     WordListReadError(std::io::Error),
     NoWordsRemaining,
     NotTileChar(char),
+    IncorrectNumberOfWords,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -155,6 +158,10 @@ impl<const N: usize> GameState<N> {
             },
         )
     }
+
+    pub fn random_secret<T: Rng>(&self, rng: &mut T) -> Word<N> {
+        self.possible_secrets[rng.gen_range(0..self.possible_secrets.len())]
+    }
 }
 
 impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
@@ -213,6 +220,39 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
                 }
             },
         )
+    }
+
+    pub fn estimate_difficulty(&self, secret_words: [Word<N>; 4]) -> usize {
+        secret_words
+            .iter()
+            .map(|guess| {
+                let game_state = self.clone();
+                let clues = secret_words
+                    .iter()
+                    .map(|secret| secret.compare_with_guess(*guess))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                game_state.after_guess(*guess, clues)
+            })
+            .map(|state| {
+                state
+                    .games
+                    .iter()
+                    .map(|game| game.possible_secrets.len())
+                    .product::<usize>()
+            })
+            .max()
+            .unwrap()
+    }
+
+    pub fn random_secret<T: Rng>(&self, rng: &mut T) -> [Word<N>; GAMES] {
+        self.games
+            .iter()
+            .map(|game| game.random_secret(rng))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     }
 }
 

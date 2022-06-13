@@ -2,7 +2,7 @@ use wordle::*;
 mod plots;
 
 use itertools::Itertools;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use structopt::StructOpt;
 
 use std::convert::TryInto;
@@ -144,6 +144,15 @@ struct Options {
 
     #[structopt(long = "quordle")]
     quordle: bool,
+
+    #[structopt(long = "quordle-difficulty")]
+    quordle_difficulty: Option<Vec<String>>,
+
+    #[structopt(long = "quordle-difficulty-n-sim")]
+    quordle_difficulty_n_sim: Option<usize>,
+
+    #[structopt(long = "quordle-difficulty-sim-seed", default_value = "0")]
+    quordle_difficulty_sim_seed: u64,
 }
 
 fn run_single(game_state: GameState<5>, opt: &Options) -> Result<(), Error> {
@@ -265,7 +274,37 @@ fn main() -> Result<(), Error> {
         GameState::<5>::from_files(&opt.word_list, &opt.word_list)?
     };
 
-    if opt.quordle {
+    if let Some(words) = opt.quordle_difficulty {
+        let game_state = MultiGameState::<5, 4>::new(game_state);
+        let secret_words = words
+            .into_iter()
+            .map(|s: String| -> Result<Word<5>, Error> { s.parse() })
+            .collect::<Result<Vec<_>, _>>()?
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::IncorrectNumberOfWords)?;
+        let difficulty = game_state.estimate_difficulty(secret_words);
+        println!("Difficulty: {}", difficulty);
+        println!("Log10(Difficulty): {}", (difficulty as f64).log10());
+    } else if let Some(n_sim) = opt.quordle_difficulty_n_sim {
+        let game_state = MultiGameState::<5, 4>::new(game_state);
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+            opt.quordle_difficulty_sim_seed,
+        );
+        (0..n_sim)
+            .map(|_i| {
+                let secret = game_state.random_secret(&mut rng);
+                let diff = game_state.estimate_difficulty(secret);
+                (secret, diff)
+            })
+            .for_each(|(secret, diff)| {
+                println!(
+                    "{} {}",
+                    diff,
+                    secret.iter().map(|w| format!("{}", w)).join(" ")
+                );
+            });
+    } else if opt.quordle {
         run_quordle(MultiGameState::new(game_state), &opt)?;
     } else {
         run_single(game_state, &opt)?;
