@@ -110,10 +110,21 @@ impl<const N: usize> Clue<N> {
 }
 
 impl<const N: usize> GameState<N> {
+    // Returns whether the game has finished by having guessed the
+    // secret word.
     pub fn is_finished(&self) -> bool {
         self.made_correct_guess
     }
 
+    // Returns whether this represents a valid state of the game.  If
+    // all possible secrets have been eliminated, something has gone
+    // wrong internally.
+    pub fn is_valid(&self) -> bool {
+        !self.possible_secrets.is_empty()
+    }
+
+    // Returns the game state that would occur after applying a guess
+    // and receiving a clue.
     pub fn after_guess(
         &self,
         guess: Word<N>,
@@ -136,6 +147,9 @@ impl<const N: usize> GameState<N> {
         }
     }
 
+    // An iterator that returns the results of repeated application of
+    // a strategy.  The last element of the iterator will return true
+    // for `GameState.is_finished`.
     pub fn simulate_strategy<'a, S: Strategy<N>>(
         &self,
         secret_word: Word<N>,
@@ -159,6 +173,7 @@ impl<const N: usize> GameState<N> {
         )
     }
 
+    // Pick a random secret that is compatible with this game state.
     pub fn random_secret<T: Rng>(&self, rng: &mut T) -> Word<N> {
         self.possible_secrets[rng.gen_range(0..self.possible_secrets.len())]
     }
@@ -174,10 +189,21 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
         Self { games }
     }
 
+    // Returns whether the game has finished by having guessed the
+    // secret word on all puzzles.
     pub fn is_finished(&self) -> bool {
         self.games.iter().all(|game| game.is_finished())
     }
 
+    // Returns whether this represents a valid state of the game.  If
+    // any puzzle has eliminated all possible secrets, then something
+    // has gone wrong internally.
+    pub fn is_valid(&self) -> bool {
+        self.games.iter().all(|game| game.is_valid())
+    }
+
+    // Returns the game state that would occur after applying a guess
+    // and receiving a clue.
     pub fn after_guess(&self, guess: Word<N>, clues: [Clue<N>; GAMES]) -> Self {
         let games = self
             .games
@@ -191,6 +217,9 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
         Self { games }
     }
 
+    // An iterator that returns the results of repeated application of
+    // a strategy.  The last element of the iterator will return true
+    // for `GameState.is_finished`.
     pub fn simulate_strategy<'a, S: MultiStrategy<N, GAMES>>(
         &self,
         secret_words: [Word<N>; GAMES],
@@ -222,6 +251,10 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
         )
     }
 
+    // Rough estimation of the difficulty of this quordle puzzle.  The
+    // estimation is based on the number of secrets remaining in each
+    // puzzle after having applied the correct guess from each other
+    // puzzle.
     pub fn estimate_difficulty(&self, secret_words: [Word<N>; 4]) -> usize {
         secret_words
             .iter()
@@ -246,6 +279,7 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
             .unwrap()
     }
 
+    // Pick a random secret that is compatible with this game state.
     pub fn random_secret<T: Rng>(&self, rng: &mut T) -> [Word<N>; GAMES] {
         self.games
             .iter()
@@ -253,6 +287,19 @@ impl<const N: usize, const GAMES: usize> MultiGameState<N, GAMES> {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap()
+    }
+
+    // Utility for MultiStrategy implementations.  If a puzzle has
+    // only one remaining option, but hasn't yet been finished, then
+    // it is better to guess that option sooner rather than later, as
+    // the results may be useful for other puzzles.
+    pub(crate) fn find_concluding_guess(&self) -> Option<Word<N>> {
+        self.games
+            .iter()
+            .filter(|game| !game.is_finished())
+            .filter(|game| game.possible_secrets.len() == 1)
+            .map(|game| game.possible_secrets[0])
+            .next()
     }
 }
 
