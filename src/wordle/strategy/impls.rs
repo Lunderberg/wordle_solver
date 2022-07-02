@@ -20,6 +20,10 @@ impl<const N: usize> HeuristicStrategy<N> for MiniMax {
         let max_counts: usize = *counts.iter().max().unwrap();
         max_counts
     }
+
+    fn fmt(&self, heuristic: &Self::Output) -> String {
+        format!("{heuristic}")
+    }
 }
 
 // Make whatever guess has the most possible clues, which minimizes

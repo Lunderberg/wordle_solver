@@ -71,6 +71,9 @@ pub trait HeuristicStrategy<const N: usize> {
     fn word_options<'a>(&self, state: &'a GameState<N>) -> &'a Vec<Word<N>> {
         &state.allowed_guesses
     }
+    fn fmt(&self, _heuristic: &Self::Output) -> String {
+        return "".to_string();
+    }
 }
 
 impl<H: HeuristicStrategy<N>, const N: usize> Strategy<N> for H {

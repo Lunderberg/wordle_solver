@@ -101,7 +101,7 @@ fn simulate_strategy<S: Strategy<N>, const N: usize>(
                 _ => (),
             }
             match res_state {
-                Ok((_, state)) if state.possible_secrets.is_empty() => {
+                Ok((_, state)) if !state.is_valid() => {
                     println!("Strategy failed, erroneously eliminated all possibilities.");
                 }
                 Ok((_, state)) if state.possible_secrets.len() == 1 => {
@@ -122,13 +122,68 @@ fn simulate_strategy<S: Strategy<N>, const N: usize>(
         });
 }
 
+fn simulate_multi_strategy<
+    S: MultiStrategy<N, GAMES>,
+    const N: usize,
+    const GAMES: usize,
+>(
+    game_state: &MultiGameState<N, GAMES>,
+    strategy: &S,
+    secret_words: [Word<N>; GAMES],
+) {
+    game_state
+        .simulate_strategy(secret_words, strategy)
+        .enumerate()
+        .for_each(|(i,res_state)| {
+            match &res_state {
+                Ok((Some((guess, clue)), _)) => {
+                    println!("Guess #{}: {}", i, guess);
+                    println!("Clue #{}: [{}]", i, clue.iter().map(|c| format!("{}",c)).join(", "));
+                }
+                _ => (),
+            }
+            match res_state {
+                Ok((_, state)) if !state.is_valid() => {
+                    println!("Strategy failed, erroneously eliminated all possibilities.");
+                }
+                Ok((_, state)) if state.is_finished() => {
+                    println!("Winner, discovered secret words [{}]",
+                             state.games
+                                  .iter()
+                                  .map(|game| game.possible_secrets[0])
+                                  .map(|word| format!("{}",word))
+                                  .join(", ")
+                    );
+                }
+                Ok((_, state)) => {
+                    println!("In progress, remaining = [{}]",
+                             state.games
+                                  .iter()
+                             .map(|game| {
+                                 if game.possible_secrets.len()==1 {
+                                     let done_str = if game.is_finished() { " (done)" }  else {""};
+                                     format!("{}{}", game.possible_secrets[0],done_str)
+                                 } else if game.possible_secrets.len() < 3 {
+                                     game.possible_secrets.iter().map(|w| format!("{w}")).join("/")
+                                 } else {
+                                     format!("{}", game.possible_secrets.len())
+                                 }
+                             })
+                             .join(", ")
+                    );
+                }
+                Err(e) => println!("Error: {:?}", e),
+            }
+        });
+}
+
 #[derive(StructOpt)]
 struct Options {
     #[structopt(short = "i", long = "interactive")]
     interactive: bool,
 
     #[structopt(short = "w", long = "secret-word")]
-    secret_word: Option<String>,
+    secret_word: Vec<String>,
 
     #[structopt(short = "s", long = "simulate")]
     simulate: bool,
@@ -173,7 +228,7 @@ fn run_single(game_state: GameState<5>, opt: &Options) -> Result<(), Error> {
     if opt.simulate {
         let secret_word: Word<5> = opt
             .secret_word
-            .as_ref()
+            .first()
             .map(|s| s.parse())
             .transpose()?
             .unwrap_or_else(|| {
@@ -240,9 +295,18 @@ fn run_quordle(
         .strategy
         .first()
         .map(|name| {
-            strategy::all_multi_strategies()
-                .remove(name)
-                .unwrap_or_else(|| panic!("Unknown strategy: {}", name))
+            let mut strategies = strategy::all_multi_strategies();
+            strategies.remove(name).unwrap_or_else(|| {
+                panic!(
+                    "Unknown strategy: {}.  Options are {}",
+                    name,
+                    strategies
+                        .into_keys()
+                        .sorted()
+                        .map(|s| format!("\"{s}\""))
+                        .join(", ")
+                )
+            })
         })
         .unwrap_or_else(|| {
             Box::new(strategy::MultiSequential::new(strategy::MiniMax))
@@ -253,7 +317,15 @@ fn run_quordle(
     }
 
     if opt.simulate {
-        panic!("Simulate not implemented for quordle");
+        let secret_words: [Word<5>; 4] = opt
+            .secret_word
+            .iter()
+            .map(|s| s.parse())
+            .collect::<Result<Vec<Word<5>>, _>>()?
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::IncorrectNumberOfWords)?;
+        simulate_multi_strategy(&game_state, &strategy, secret_words);
     }
 
     if opt.analysis {

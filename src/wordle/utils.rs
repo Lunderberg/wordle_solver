@@ -53,12 +53,15 @@ impl<const N: usize> GameState<N> {
     }
 
     pub fn from_wordle() -> Self {
-        let allowed_guesses = Self::words_from_bytes(include_bytes!(
-            "wordle_allowed_guesses.txt"
-        ));
         let possible_secrets = Self::words_from_bytes(include_bytes!(
             "wordle_possible_secrets.txt"
         ));
+        let allowed_guesses = Self::words_from_bytes(include_bytes!(
+            "wordle_allowed_guesses.txt"
+        ))
+        .into_iter()
+        .chain(possible_secrets.iter().cloned())
+        .collect();
 
         Self {
             made_correct_guess: false,

@@ -58,7 +58,7 @@ impl<S: Strategy<N>, const N: usize, const GAMES: usize> MultiStrategy<N, GAMES>
                     .games
                     .iter()
                     .filter(|game| !game.is_finished())
-                    .min_by_key(|game| game.possible_secrets.len())
+                    .max_by_key(|game| game.possible_secrets.len())
                     .map(|game| self.single.make_guess(game))
                     .unwrap()
             },
@@ -87,6 +87,13 @@ impl<S: HeuristicStrategy<N>, const N: usize, const GAMES: usize>
     ) -> Result<Word<N>, Error> {
         state.find_concluding_guess().map_or_else(
             || {
+                let option_set = state
+                    .games
+                    .iter()
+                    .map(|game| game.possible_secrets.iter())
+                    .flatten()
+                    .collect::<HashSet<_>>();
+
                 state
                     .games
                     .iter()
@@ -94,7 +101,13 @@ impl<S: HeuristicStrategy<N>, const N: usize, const GAMES: usize>
                     .flatten()
                     .collect::<HashSet<_>>()
                     .into_iter()
-                    .min_by_key(|guess| self.multi_heuristic(state, guess))
+                    .min_by_key(|guess| {
+                        let ret = (
+                            self.multi_heuristic(state, guess),
+                            !option_set.contains(guess),
+                        );
+                        ret
+                    })
                     .map(|x| *x)
                     .ok_or(Error::NoWordsRemaining)
             },
